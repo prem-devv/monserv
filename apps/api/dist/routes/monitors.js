@@ -164,6 +164,7 @@ export async function monitorRoutes(fastify) {
                     const emoji = result.up ? '✅' : '🔴';
                     const statusText = result.up ? 'ONLINE' : 'OFFLINE';
                     await axios.post(data.webhookUrl, {
+                        content: `🧪 *Monserv Test Alert*\nThis is a test notification from Monserv.\n\nTarget: ${data.url}\nProtocol: ${data.type.toUpperCase()}\nResult: ${emoji} ${statusText}\nLatency: ${result.latency}ms\nDetails: ${result.message}\nTime: ${new Date().toISOString()}`,
                         text: `🧪 *Monserv Test Alert*\nThis is a test notification from Monserv.\n\nTarget: ${data.url}\nProtocol: ${data.type.toUpperCase()}\nResult: ${emoji} ${statusText}\nLatency: ${result.latency}ms\nDetails: ${result.message}\nTime: ${new Date().toISOString()}`,
                     }, { timeout: 10000 });
                     webhookResult = { sent: true };

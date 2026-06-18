@@ -21,6 +21,7 @@ async function sendWebhookNotification(
     const emoji = status === 'up' ? '✅' : '🔴';
     const statusText = status === 'up' ? 'RECOVERED' : 'DOWN';
     await axios.post(webhookUrl, {
+      content: `${emoji} *Monserv Alert*\nMonitor: *${monitor.name}*\nStatus: *${statusText}*\nType: ${monitor.type.toUpperCase()}\nTarget: ${monitor.url}\nMessage: ${message}\nTime: ${new Date().toISOString()}`,
       text: `${emoji} *Monserv Alert*\nMonitor: *${monitor.name}*\nStatus: *${statusText}*\nType: ${monitor.type.toUpperCase()}\nTarget: ${monitor.url}\nMessage: ${message}\nTime: ${new Date().toISOString()}`,
     }, { timeout: 10000 });
     console.log(`[WEBHOOK] Sent ${statusText} notification for monitor ${monitor.id} to ${webhookUrl}`);
@@ -180,13 +181,11 @@ async function runCheck(
     expectedStatus || null
   );
 
+  // MUST read state AFTER the check completes to prevent race conditions 
+  // if interval < timeout and multiple checks overlap.
   const previousStatus = lastStatus.get(monitorId);
   const currentFailures = failureCount.get(monitorId) || 0;
 
-  // Determine the CONFIRMED status using consecutive failure threshold:
-  // - If the raw check says UP → immediately confirmed UP, reset failure counter
-  // - If the raw check says DOWN → increment failure counter; only confirm DOWN
-  //   after FAILURE_THRESHOLD consecutive failures
   let confirmedStatus: 'up' | 'down';
 
   if (up) {
