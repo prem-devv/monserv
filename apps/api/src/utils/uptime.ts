@@ -1,4 +1,4 @@
-import { jsonDb } from '../db/jsonDb';
+import { jsonDb } from '../db/jsonDb.js';
 
 export async function getUptimePercentage(monitorId: number): Promise<number> {
   const heartbeats = jsonDb.heartbeats.findMany(monitorId, 1440);
