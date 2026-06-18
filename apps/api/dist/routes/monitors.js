@@ -1,6 +1,7 @@
 import { jsonDb } from '../db/jsonDb.js';
 import { z } from 'zod';
 import { scheduleMonitorWithInterval, cancelMonitorSchedule, executeSingleCheck } from '../services/scheduler.js';
+import axios from 'axios';
 const createMonitorSchema = z.object({
     name: z.string().min(1).max(100).trim(),
     type: z.enum(['http', 'tcp', 'icmp']),
@@ -21,6 +22,7 @@ const testConnectionSchema = z.object({
     timeout: z.number().int().min(1).max(30).default(10),
     keyword: z.string().max(255).optional().nullable(),
     expectedStatus: z.number().int().min(100).max(599).optional().nullable(),
+    webhookUrl: z.string().max(2048).url().optional().or(z.literal('')).nullable(),
 });
 async function getUptimePercentage(monitorId) {
     const heartbeats = jsonDb.heartbeats.findMany(monitorId, 1440);
@@ -155,7 +157,24 @@ export async function monitorRoutes(fastify) {
         const data = testConnectionSchema.parse(request.body);
         try {
             const result = await executeSingleCheck(data.type, data.url, data.port || null, data.timeout, data.keyword || null, data.expectedStatus || null);
-            return reply.send(result);
+            // If a webhookUrl is provided, send a test message to it
+            let webhookResult;
+            if (data.webhookUrl && data.webhookUrl.length > 0) {
+                try {
+                    const emoji = result.up ? '✅' : '🔴';
+                    const statusText = result.up ? 'ONLINE' : 'OFFLINE';
+                    await axios.post(data.webhookUrl, {
+                        text: `🧪 *Monserv Test Alert*\nThis is a test notification from Monserv.\n\nTarget: ${data.url}\nProtocol: ${data.type.toUpperCase()}\nResult: ${emoji} ${statusText}\nLatency: ${result.latency}ms\nDetails: ${result.message}\nTime: ${new Date().toISOString()}`,
+                    }, { timeout: 10000 });
+                    webhookResult = { sent: true };
+                    console.log(`[WEBHOOK TEST] Test message sent to ${data.webhookUrl}`);
+                }
+                catch (err) {
+                    webhookResult = { sent: false, error: err?.message || 'Failed to send test webhook' };
+                    console.error(`[WEBHOOK TEST ERROR]:`, err?.message);
+                }
+            }
+            return reply.send({ ...result, webhookResult });
         }
         catch (error) {
             return reply.code(500).send({ error: error.message || 'Failed to run connection test' });

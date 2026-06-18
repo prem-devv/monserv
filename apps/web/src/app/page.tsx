@@ -230,9 +230,18 @@ export default function Dashboard() {
         timeout: Number(formData.timeout) || 10,
         keyword: formData.type === 'http' ? (formData.keyword || undefined) : undefined,
         expectedStatus: formData.type === 'http' ? (Number(formData.expectedStatus) || 200) : undefined,
+        webhookUrl: formData.webhookUrl || undefined,
       };
       const result = await api.testDraftConnection(payload);
       setTestResult(result);
+      // Show webhook result in toast if a webhook was tested
+      if (result.webhookResult) {
+        if (result.webhookResult.sent) {
+          showToast('✅ Test webhook message sent successfully!', 'success');
+        } else {
+          showToast(`⚠️ Webhook failed: ${result.webhookResult.error}`, 'error');
+        }
+      }
     } catch (error: any) {
       setTestResult({
         up: false,

@@ -108,7 +108,7 @@ export const api = {
     return data;
   },
 
-  testDraftConnection: async (draft: Partial<Monitor>): Promise<{ up: boolean; latency: number; message: string }> => {
+  testDraftConnection: async (draft: Partial<Monitor>): Promise<{ up: boolean; latency: number; message: string; webhookResult?: { sent: boolean; error?: string } }> => {
     const { data } = await http.post(`${API_URL}/monitors/test-connection`, draft);
     return data;
   },

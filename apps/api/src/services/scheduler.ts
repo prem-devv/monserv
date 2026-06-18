@@ -4,6 +4,12 @@ import axios from 'axios';
 const intervals: Map<number, NodeJS.Timeout> = new Map();
 // Track last known status per monitor to detect state changes for webhooks
 const lastStatus: Map<number, 'up' | 'down'> = new Map();
+// Track consecutive failure count per monitor to prevent flapping
+const failureCount: Map<number, number> = new Map();
+
+// Number of consecutive failures required before marking a monitor as DOWN.
+// A single success immediately resets the counter and marks it UP.
+const FAILURE_THRESHOLD = 3;
 
 async function sendWebhookNotification(
   webhookUrl: string,
@@ -174,37 +180,64 @@ async function runCheck(
     expectedStatus || null
   );
 
-  const currentStatus: 'up' | 'down' = up ? 'up' : 'down';
   const previousStatus = lastStatus.get(monitorId);
+  const currentFailures = failureCount.get(monitorId) || 0;
 
-  console.log(`[HEARTBEAT] monitor=${monitorId} type=${type} status=${currentStatus} latency=${latency}ms msg="${message}"`);
+  // Determine the CONFIRMED status using consecutive failure threshold:
+  // - If the raw check says UP → immediately confirmed UP, reset failure counter
+  // - If the raw check says DOWN → increment failure counter; only confirm DOWN
+  //   after FAILURE_THRESHOLD consecutive failures
+  let confirmedStatus: 'up' | 'down';
 
+  if (up) {
+    // Success — immediately mark as UP and reset failure counter
+    failureCount.set(monitorId, 0);
+    confirmedStatus = 'up';
+  } else {
+    // Failure — increment counter
+    const newFailures = currentFailures + 1;
+    failureCount.set(monitorId, newFailures);
+
+    if (newFailures >= FAILURE_THRESHOLD) {
+      // Enough consecutive failures — confirm DOWN
+      confirmedStatus = 'down';
+      console.log(`[CONFIRM DOWN] monitor=${monitorId} failed ${newFailures}/${FAILURE_THRESHOLD} consecutive checks`);
+    } else {
+      // Not enough failures yet — keep previous status (or 'up' if first run)
+      confirmedStatus = previousStatus || 'up';
+      console.log(`[PENDING] monitor=${monitorId} failure ${newFailures}/${FAILURE_THRESHOLD}, keeping status=${confirmedStatus}`);
+    }
+  }
+
+  console.log(`[HEARTBEAT] monitor=${monitorId} type=${type} raw=${up ? 'up' : 'down'} confirmed=${confirmedStatus} latency=${latency}ms msg="${message}"`);
+
+  // Record the CONFIRMED status in heartbeat history (not raw check result)
   jsonDb.heartbeats.create({
     monitorId,
-    status: currentStatus,
+    status: confirmedStatus,
     latency,
     message,
     createdAt: Date.now(),
   });
 
-  // Fire webhook/email alert on state change (up→down or down→up)
-  if (previousStatus !== undefined && previousStatus !== currentStatus) {
+  // Fire webhook/email alert on CONFIRMED state change (up→down or down→up)
+  if (previousStatus !== undefined && previousStatus !== confirmedStatus) {
     const monitor = jsonDb.monitors.findFirst(monitorId);
     if (monitor) {
       if (monitor.webhookUrl) {
-        console.log(`[WEBHOOK] State change for monitor ${monitorId}: ${previousStatus} → ${currentStatus}`);
-        sendWebhookNotification(monitor.webhookUrl, monitor, currentStatus, message).catch(() => {});
+        console.log(`[WEBHOOK] State change for monitor ${monitorId}: ${previousStatus} → ${confirmedStatus}`);
+        sendWebhookNotification(monitor.webhookUrl, monitor, confirmedStatus, message).catch(() => {});
       }
       
       const settings = jsonDb.settings.get();
       if (settings && settings.smtpHost && settings.notificationEmail) {
-        console.log(`[EMAIL] State change for monitor ${monitorId}: ${previousStatus} → ${currentStatus}`);
-        sendEmailNotification(settings, monitor, currentStatus, message).catch(() => {});
+        console.log(`[EMAIL] State change for monitor ${monitorId}: ${previousStatus} → ${confirmedStatus}`);
+        sendEmailNotification(settings, monitor, confirmedStatus, message).catch(() => {});
       }
     }
   }
 
-  lastStatus.set(monitorId, currentStatus);
+  lastStatus.set(monitorId, confirmedStatus);
 }
 
 export async function scheduleAllMonitors() {
@@ -274,6 +307,8 @@ export function cancelMonitorSchedule(monitorId: number) {
   if (existing) {
     clearInterval(existing);
     intervals.delete(monitorId);
+    // Reset failure counter so the rescheduled monitor starts fresh
+    failureCount.delete(monitorId);
     // NOTE: intentionally keep lastStatus so webhook logic can detect the next
     // real state change after a reschedule (e.g. on monitor edit).
     console.log(`Cancelled schedule for monitor ${monitorId}`);
