@@ -7,7 +7,7 @@ const lastStatus = new Map();
 const failureCount = new Map();
 // Number of consecutive failures required before marking a monitor as DOWN.
 // A single success immediately resets the counter and marks it UP.
-const FAILURE_THRESHOLD = 1;
+const FAILURE_THRESHOLD = 2;
 async function sendWebhookNotification(webhookUrl, monitor, status, message) {
     try {
         const emoji = status === 'up' ? '✅' : '🔴';
@@ -197,22 +197,26 @@ async function runCheck(monitorId, type, url, port, timeout, keyword, expectedSt
         message,
         createdAt: Date.now(),
     });
-    // Fire webhook/email alert on CONFIRMED state change (up→down or down→up)
-    if (previousStatus !== undefined && previousStatus !== confirmedStatus) {
+    // Fire webhook/email alert on CONFIRMED state change
+    const shouldSendAlert = previousStatus !== undefined
+        ? previousStatus !== confirmedStatus
+        : confirmedStatus === 'down'; // Send alert if it starts DOWN, but not if it starts UP
+    if (shouldSendAlert) {
         const monitor = jsonDb.monitors.findFirst(monitorId);
         if (monitor) {
             if (monitor.webhookUrl) {
-                console.log(`[WEBHOOK] State change for monitor ${monitorId}: ${previousStatus} → ${confirmedStatus}`);
+                console.log(`[WEBHOOK] State change for monitor ${monitorId}: ${previousStatus || 'none'} → ${confirmedStatus}`);
                 sendWebhookNotification(monitor.webhookUrl, monitor, confirmedStatus, message).catch(() => { });
             }
             const settings = jsonDb.settings.get();
             if (settings && settings.smtpHost && settings.notificationEmail) {
-                console.log(`[EMAIL] State change for monitor ${monitorId}: ${previousStatus} → ${confirmedStatus}`);
+                console.log(`[EMAIL] State change for monitor ${monitorId}: ${previousStatus || 'none'} → ${confirmedStatus}`);
                 sendEmailNotification(settings, monitor, confirmedStatus, message).catch(() => { });
             }
         }
     }
     lastStatus.set(monitorId, confirmedStatus);
+    return confirmedStatus;
 }
 export async function scheduleAllMonitors() {
     const monitors = jsonDb.monitors.findMany().filter(m => m.active);
@@ -250,37 +254,40 @@ function _registerInterval(monitorId, intervalSeconds) {
     const monitor = jsonDb.monitors.findFirst(monitorId);
     if (!monitor || !monitor.active)
         return;
-    // Clear any pre-existing interval (but preserve lastStatus)
     const existing = intervals.get(monitorId);
     if (existing) {
         clearTimeout(existing);
         intervals.delete(monitorId);
     }
     const intervalMs = intervalSeconds * 1000;
-    const scheduleNext = () => {
+    const scheduleNext = (delayMs) => {
         const timerId = setTimeout(async () => {
-            // Re-fetch monitor in case it was modified or deleted
             const currentMonitor = jsonDb.monitors.findFirst(monitorId);
             if (!currentMonitor || !currentMonitor.active) {
                 intervals.delete(monitorId);
                 return;
             }
+            let nextDelay = intervalMs;
             try {
-                await runCheck(monitorId, currentMonitor.type, currentMonitor.url, currentMonitor.port, currentMonitor.timeout, currentMonitor.keyword, currentMonitor.expectedStatus);
+                const confirmedStatus = await runCheck(monitorId, currentMonitor.type, currentMonitor.url, currentMonitor.port, currentMonitor.timeout, currentMonitor.keyword, currentMonitor.expectedStatus);
+                // UPTIME KUMA LOGIC: Fast retries if failing but not yet confirmed DOWN
+                const currentFailures = failureCount.get(monitorId) || 0;
+                if (currentFailures > 0 && currentFailures < FAILURE_THRESHOLD) {
+                    nextDelay = 2000; // Retry in 2 seconds to quickly confirm if it's a real outage
+                }
             }
             catch (err) {
                 console.error(`[SCHEDULE ERROR] monitor=${monitorId}:`, err.message);
             }
             finally {
-                // Schedule next iteration only after current one finishes
                 if (intervals.has(monitorId)) {
-                    scheduleNext();
+                    scheduleNext(nextDelay);
                 }
             }
-        }, intervalMs);
+        }, delayMs);
         intervals.set(monitorId, timerId);
     };
-    scheduleNext();
+    scheduleNext(intervalMs);
     console.log(`Monitor ${monitorId} interval registered for every ${intervalSeconds}s`);
 }
 export function cancelMonitorSchedule(monitorId) {
