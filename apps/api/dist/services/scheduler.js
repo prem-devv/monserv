@@ -12,10 +12,9 @@ async function sendWebhookNotification(webhookUrl, monitor, status, message) {
     try {
         const emoji = status === 'up' ? '✅' : '🔴';
         const statusText = status === 'up' ? 'RECOVERED' : 'DOWN';
-        await axios.post(webhookUrl, {
-            content: `${emoji} *Monserv Alert*\nMonitor: *${monitor.name}*\nStatus: *${statusText}*\nType: ${monitor.type.toUpperCase()}\nTarget: ${monitor.url}\nMessage: ${message}\nTime: ${new Date().toISOString()}`,
-            text: `${emoji} *Monserv Alert*\nMonitor: *${monitor.name}*\nStatus: *${statusText}*\nType: ${monitor.type.toUpperCase()}\nTarget: ${monitor.url}\nMessage: ${message}\nTime: ${new Date().toISOString()}`,
-        }, { timeout: 10000 });
+        const msgText = `${emoji} *Monserv Alert*\nMonitor: *${monitor.name}*\nStatus: *${statusText}*\nType: ${monitor.type.toUpperCase()}\nTarget: ${monitor.url}\nMessage: ${message}\nTime: ${new Date().toISOString()}`;
+        const isDiscord = webhookUrl.toLowerCase().includes('discord.com');
+        await axios.post(webhookUrl, isDiscord ? { content: msgText } : { text: msgText }, { timeout: 10000 });
         console.log(`[WEBHOOK] Sent ${statusText} notification for monitor ${monitor.id} to ${webhookUrl}`);
     }
     catch (err) {
