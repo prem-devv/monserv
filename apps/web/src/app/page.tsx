@@ -1024,7 +1024,7 @@ export default function Dashboard() {
                     className="btn-primary py-2.5 flex items-center justify-center gap-2 text-xs"
                   >
                     <Save className="w-3.5 h-3.5" />
-                    Save Flow
+                    Save
                   </button>
                 </div>
 
@@ -1035,7 +1035,7 @@ export default function Dashboard() {
                     className="w-full mt-2 border border-status-red/20 hover:border-status-red text-status-red hover:bg-status-red/5 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
-                    Delete Monitor Flow
+                    Delete Monitor
                   </button>
                 )}
               </div>

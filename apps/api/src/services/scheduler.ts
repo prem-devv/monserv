@@ -90,17 +90,25 @@ export async function executeSingleCheck(
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeout * 1000);
       try {
-        const response = await axios.get(url, {
-          timeout: timeout * 1000,
-          validateStatus: () => true,
-          httpsAgent: globalHttpsAgent,
-          headers: {
-            'User-Agent': 'Monserv/1.0 (Monitoring Check)',
-            'Cache-Control': 'no-cache',
-            'Connection': 'keep-alive'
-          },
-          signal: controller.signal
-        });
+        const response = await Promise.race([
+          axios.get(url, {
+            timeout: timeout * 1000,
+            validateStatus: () => true,
+            httpsAgent: globalHttpsAgent,
+            headers: {
+              'User-Agent': 'Monserv/1.0 (Monitoring Check)',
+              'Cache-Control': 'no-cache',
+              'Connection': 'keep-alive'
+            },
+            signal: controller.signal
+          }),
+          new Promise<any>((_, reject) => 
+            setTimeout(() => {
+              controller.abort();
+              reject(new Error('Connection timeout'));
+            }, timeout * 1000)
+          )
+        ]);
         clearTimeout(timeoutId);
         latency = Date.now() - start;
         
