@@ -54,19 +54,19 @@ async function sendEmailNotification(settings, monitor, status, message) {
         console.error(`[EMAIL ERROR] Failed to send email alert for monitor ${monitor.id}:`, err.message);
     }
 }
+import https from 'https';
+const globalHttpsAgent = new https.Agent({ rejectUnauthorized: false, keepAlive: true });
 export async function executeSingleCheck(type, url, port, timeout, keyword, expectedStatus) {
-    const start = Date.now();
     let up = false;
     let latency = 0;
-    let message = 'Unknown error';
+    let message = '';
+    const start = Date.now();
     try {
         if (type === 'http') {
-            const https = await import('https');
-            const httpsAgent = new https.Agent({ rejectUnauthorized: false });
             const response = await axios.get(url, {
                 timeout: timeout * 1000,
                 validateStatus: () => true,
-                httpsAgent,
+                httpsAgent: globalHttpsAgent,
             });
             latency = Date.now() - start;
             if (expectedStatus && response.status !== expectedStatus) {
@@ -236,20 +236,40 @@ function _registerInterval(monitorId, intervalSeconds) {
     // Clear any pre-existing interval (but preserve lastStatus)
     const existing = intervals.get(monitorId);
     if (existing) {
-        clearInterval(existing);
+        clearTimeout(existing);
         intervals.delete(monitorId);
     }
     const intervalMs = intervalSeconds * 1000;
-    const intervalId = setInterval(() => {
-        runCheck(monitorId, monitor.type, monitor.url, monitor.port, monitor.timeout, monitor.keyword, monitor.expectedStatus).catch(err => console.error(`[SCHEDULE ERROR] monitor=${monitorId}:`, err.message));
-    }, intervalMs);
-    intervals.set(monitorId, intervalId);
-    console.log(`Monitor ${monitorId} interval registered every ${intervalSeconds}s`);
+    const scheduleNext = () => {
+        const timerId = setTimeout(async () => {
+            // Re-fetch monitor in case it was modified or deleted
+            const currentMonitor = jsonDb.monitors.findFirst(monitorId);
+            if (!currentMonitor || !currentMonitor.active) {
+                intervals.delete(monitorId);
+                return;
+            }
+            try {
+                await runCheck(monitorId, currentMonitor.type, currentMonitor.url, currentMonitor.port, currentMonitor.timeout, currentMonitor.keyword, currentMonitor.expectedStatus);
+            }
+            catch (err) {
+                console.error(`[SCHEDULE ERROR] monitor=${monitorId}:`, err.message);
+            }
+            finally {
+                // Schedule next iteration only after current one finishes
+                if (intervals.has(monitorId)) {
+                    scheduleNext();
+                }
+            }
+        }, intervalMs);
+        intervals.set(monitorId, timerId);
+    };
+    scheduleNext();
+    console.log(`Monitor ${monitorId} interval registered for every ${intervalSeconds}s`);
 }
 export function cancelMonitorSchedule(monitorId) {
     const existing = intervals.get(monitorId);
     if (existing) {
-        clearInterval(existing);
+        clearTimeout(existing);
         intervals.delete(monitorId);
         // Reset failure counter so the rescheduled monitor starts fresh
         failureCount.delete(monitorId);
