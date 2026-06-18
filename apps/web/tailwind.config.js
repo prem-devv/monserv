@@ -3,16 +3,44 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        background: { primary: '#F8FAFC', secondary: '#F1F5F9', tertiary: '#E2E8F0' },
-        surface: { DEFAULT: '#FFFFFF', border: '#E2E8F0' },
-        text: { primary: '#0F172A', secondary: '#64748B', muted: '#94A3B8' },
-        brand: { DEFAULT: '#2563EB', hover: '#3B82F6' },
-        status: { green: '#10B981', red: '#EF4444', yellow: '#F59E0B', cyan: '#0EA5E9' },
+        background: {
+          primary: 'var(--background-primary)',
+          secondary: 'var(--background-secondary)',
+          tertiary: 'var(--background-tertiary)'
+        },
+        surface: {
+          DEFAULT: 'var(--surface)',
+          border: 'var(--surface-border)'
+        },
+        text: {
+          primary: 'var(--text-primary)',
+          secondary: 'var(--text-secondary)',
+          muted: 'var(--text-muted)'
+        },
+        brand: {
+          DEFAULT: 'var(--brand)',
+          hover: 'var(--brand-hover)'
+        },
+        status: {
+          green: 'var(--status-green)',
+          red: 'var(--status-red)',
+          yellow: 'var(--status-yellow)',
+          cyan: 'var(--status-cyan)'
+        },
+        gradient: {
+          start: 'var(--brand)',
+          mid: 'var(--brand-hover)',
+          end: 'var(--status-cyan)'
+        }
       },
-      fontFamily: { mono: ['JetBrains Mono', 'monospace'], sans: ['Inter', 'sans-serif'] },
+      fontFamily: { sans: ['Outfit', 'Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
       boxShadow: {
-        'card': '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
-        'card-hover': '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+        'card': '0 4px 20px rgba(0, 0, 0, 0.02)',
+        'card-hover': '0 8px 30px rgba(124, 58, 237, 0.04), 0 10px 30px rgba(0, 0, 0, 0.04)',
+        'glow-green': '0 0 15px rgba(16, 185, 129, 0.1)',
+        'glow-red': '0 0 15px rgba(239, 68, 68, 0.1)',
+        'glow-cyan': '0 0 15px rgba(14, 165, 233, 0.1)',
+        'glow-purple': '0 0 15px rgba(124, 58, 237, 0.1)',
       },
     },
   },

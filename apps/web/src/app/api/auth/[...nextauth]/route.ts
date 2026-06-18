@@ -13,7 +13,7 @@ const handler = NextAuth({
       },
       async authorize(credentials) {
         if (credentials?.username === 'admin' && credentials?.password === 'admin') {
-          return { id: "1", name: "Admin", email: "admin@kmonitor.local" };
+          return { id: "1", name: "Admin", email: "admin@monserv.local" };
         }
         return null;
       }

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "K-Monitor Deployment Script"
+echo "Monserv Deployment Script"
 echo "========================"
 
 echo "Installing system dependencies..."
@@ -33,7 +33,7 @@ echo "Building Web..."
 cd ../web && npm run build
 
 echo ""
-echo "K-Monitor is ready!"
+echo "Monserv is ready!"
 echo ""
 echo "To start the application:"
 echo "  1. Start Redis: redis-server"

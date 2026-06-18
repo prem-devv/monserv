@@ -92,4 +92,24 @@ export const api = {
     const { data } = await http.post(`${API_URL}/webhooks/test`, { url });
     return data;
   },
+
+  getSettings: async (): Promise<any> => {
+    const { data } = await http.get(`${API_URL}/settings`);
+    return data;
+  },
+
+  saveSettings: async (settings: any): Promise<any> => {
+    const { data } = await http.post(`${API_URL}/settings`, settings);
+    return data;
+  },
+
+  testMonitorConnection: async (id: number): Promise<{ up: boolean; latency: number; message: string }> => {
+    const { data } = await http.post(`${API_URL}/monitors/${id}/test`);
+    return data;
+  },
+
+  testDraftConnection: async (draft: Partial<Monitor>): Promise<{ up: boolean; latency: number; message: string }> => {
+    const { data } = await http.post(`${API_URL}/monitors/test-connection`, draft);
+    return data;
+  },
 };

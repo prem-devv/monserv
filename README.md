@@ -1,8 +1,8 @@
-# 🚀 K-Monitor
+# 🚀 Monserv
 
 A professional, self-hosted uptime monitoring solution designed for speed, reliability, and aesthetics. Monitor your servers, websites, and services with real-time updates and instant notifications.
 
-![K-Monitor Dashboard](https://raw.githubusercontent.com/prem-devv/k-monitor/master/screenshot.png)
+![Monserv Dashboard](https://raw.githubusercontent.com/prem-devv/monserv/master/screenshot.png)
 
 ## ✨ Features
 
@@ -18,7 +18,7 @@ A professional, self-hosted uptime monitoring solution designed for speed, relia
 
 ## 🐳 Deployment via Docker (Recommended)
 
-This is the easiest way to get K-Monitor up and running in minutes.
+This is the easiest way to get Monserv up and running in minutes.
 
 ### 1. Prerequisites
 - Docker and Docker Compose installed.
@@ -27,8 +27,8 @@ This is the easiest way to get K-Monitor up and running in minutes.
 ### 2. Setup
 Clone the repository and enter the directory:
 ```bash
-git clone https://github.com/prem-devv/k-monitor.git
-cd k-monitor
+git clone https://github.com/prem-devv/monserv.git
+cd monserv
 ```
 
 ### 3. Launch

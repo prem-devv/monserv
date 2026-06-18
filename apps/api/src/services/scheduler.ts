@@ -15,7 +15,7 @@ async function sendWebhookNotification(
     const emoji = status === 'up' ? '✅' : '🔴';
     const statusText = status === 'up' ? 'RECOVERED' : 'DOWN';
     await axios.post(webhookUrl, {
-      text: `${emoji} *K-Monitor Alert*\nMonitor: *${monitor.name}*\nStatus: *${statusText}*\nType: ${monitor.type.toUpperCase()}\nTarget: ${monitor.url}\nMessage: ${message}\nTime: ${new Date().toISOString()}`,
+      text: `${emoji} *Monserv Alert*\nMonitor: *${monitor.name}*\nStatus: *${statusText}*\nType: ${monitor.type.toUpperCase()}\nTarget: ${monitor.url}\nMessage: ${message}\nTime: ${new Date().toISOString()}`,
     }, { timeout: 10000 });
     console.log(`[WEBHOOK] Sent ${statusText} notification for monitor ${monitor.id} to ${webhookUrl}`);
   } catch (err: any) {
@@ -23,15 +23,53 @@ async function sendWebhookNotification(
   }
 }
 
-async function runCheck(
-  monitorId: number,
+async function sendEmailNotification(
+  settings: any,
+  monitor: { id: number; name: string; type: string; url: string },
+  status: 'up' | 'down',
+  message: string
+): Promise<void> {
+  try {
+    const nodemailer = await import('nodemailer');
+    const transporter = nodemailer.default.createTransport({
+      host: settings.smtpHost,
+      port: settings.smtpPort,
+      secure: settings.smtpPort === 465,
+      auth: settings.smtpUser ? {
+        user: settings.smtpUser,
+        pass: settings.smtpPass,
+      } : undefined,
+    });
+
+    const statusText = status === 'up' ? 'RECOVERED' : 'DOWN';
+    const emoji = status === 'up' ? '✅' : '🔴';
+
+    await transporter.sendMail({
+      from: settings.smtpFrom || 'noreply@monserv.local',
+      to: settings.notificationEmail,
+      subject: `${emoji} [Monserv] ${monitor.name} is ${statusText}`,
+      text: `Status Alert for Monitor: ${monitor.name}\n\n` +
+            `New Status: ${statusText}\n` +
+            `Protocol: ${monitor.type.toUpperCase()}\n` +
+            `Target: ${monitor.url}\n` +
+            `Details: ${message}\n` +
+            `Time: ${new Date().toISOString()}\n\n` +
+            `Powered by Monserv.`,
+    });
+    console.log(`[EMAIL] Sent ${statusText} alert for monitor ${monitor.id} to ${settings.notificationEmail}`);
+  } catch (err: any) {
+    console.error(`[EMAIL ERROR] Failed to send email alert for monitor ${monitor.id}:`, err.message);
+  }
+}
+
+export async function executeSingleCheck(
   type: string,
   url: string,
   port: number | null,
   timeout: number,
-  keyword?: string | null,
-  expectedStatus?: number | null
-): Promise<void> {
+  keyword: string | null,
+  expectedStatus: number | null
+): Promise<{ up: boolean; latency: number; message: string }> {
   const start = Date.now();
   let up = false;
   let latency = 0;
@@ -112,8 +150,29 @@ async function runCheck(
     up = false;
     latency = Date.now() - start;
     message = error?.message || 'Check failed';
-    console.error(`[CHECK ERROR] monitor=${monitorId} type=${type}:`, error?.message);
+    console.error(`[CHECK ERROR] type=${type}:`, error?.message);
   }
+
+  return { up, latency, message };
+}
+
+async function runCheck(
+  monitorId: number,
+  type: string,
+  url: string,
+  port: number | null,
+  timeout: number,
+  keyword?: string | null,
+  expectedStatus?: number | null
+): Promise<void> {
+  const { up, latency, message } = await executeSingleCheck(
+    type,
+    url,
+    port,
+    timeout,
+    keyword || null,
+    expectedStatus || null
+  );
 
   const currentStatus: 'up' | 'down' = up ? 'up' : 'down';
   const previousStatus = lastStatus.get(monitorId);
@@ -128,12 +187,20 @@ async function runCheck(
     createdAt: Date.now(),
   });
 
-  // Fire webhook on state change (up→down or down→up)
+  // Fire webhook/email alert on state change (up→down or down→up)
   if (previousStatus !== undefined && previousStatus !== currentStatus) {
     const monitor = jsonDb.monitors.findFirst(monitorId);
-    if (monitor?.webhookUrl) {
-      console.log(`[WEBHOOK] State change for monitor ${monitorId}: ${previousStatus} → ${currentStatus}`);
-      sendWebhookNotification(monitor.webhookUrl, monitor, currentStatus, message).catch(() => {});
+    if (monitor) {
+      if (monitor.webhookUrl) {
+        console.log(`[WEBHOOK] State change for monitor ${monitorId}: ${previousStatus} → ${currentStatus}`);
+        sendWebhookNotification(monitor.webhookUrl, monitor, currentStatus, message).catch(() => {});
+      }
+      
+      const settings = jsonDb.settings.get();
+      if (settings && settings.smtpHost && settings.notificationEmail) {
+        console.log(`[EMAIL] State change for monitor ${monitorId}: ${previousStatus} → ${currentStatus}`);
+        sendEmailNotification(settings, monitor, currentStatus, message).catch(() => {});
+      }
     }
   }
 
@@ -157,18 +224,20 @@ export async function scheduleAllMonitors() {
  * Runs an immediate check so the caller gets real status right away,
  * then registers the recurring interval.
  */
-export async function scheduleMonitorWithInterval(monitorId: number, intervalSeconds: number) {
+export async function scheduleMonitorWithInterval(monitorId: number, intervalSeconds: number, runImmediate = true) {
   const monitor = jsonDb.monitors.findFirst(monitorId);
   if (!monitor || !monitor.active) return;
 
   // Cancel any existing interval but keep lastStatus so webhook state is preserved
   cancelMonitorSchedule(monitorId);
 
-  // Run first check immediately so the caller (POST /monitors) gets real status
-  await runCheck(
-    monitorId, monitor.type, monitor.url, monitor.port,
-    monitor.timeout, monitor.keyword, monitor.expectedStatus
-  );
+  // Run first check immediately if runImmediate is true
+  if (runImmediate) {
+    await runCheck(
+      monitorId, monitor.type, monitor.url, monitor.port,
+      monitor.timeout, monitor.keyword, monitor.expectedStatus
+    );
+  }
 
   _registerInterval(monitorId, intervalSeconds);
 }
@@ -207,7 +276,6 @@ export function cancelMonitorSchedule(monitorId: number) {
     intervals.delete(monitorId);
     // NOTE: intentionally keep lastStatus so webhook logic can detect the next
     // real state change after a reschedule (e.g. on monitor edit).
-    lastStatus.delete(monitorId);
     console.log(`Cancelled schedule for monitor ${monitorId}`);
   }
 }

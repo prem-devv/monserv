@@ -37,7 +37,7 @@ export async function statusRoutes(fastify) {
         try {
             await axios.post(url, {
                 type: 'test',
-                message: 'Pulse webhook test',
+                message: 'Monserv webhook test',
                 timestamp: Date.now(),
             });
             return reply.send({ success: true });

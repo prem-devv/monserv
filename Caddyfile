@@ -1,11 +1,5 @@
-# Replace with your actual domain
+# Secure production configuration routing all traffic through Next.js
+# to enforce session-based middleware authentication.
 prem.namma.cloud {
-    # API routes go to Fastify backend (except /api/auth which Next.js handles)
-    reverse_proxy /api/monitors* 192.168.1.x:3001
-    reverse_proxy /api/status* 192.168.1.x:3001
-    reverse_proxy /api/webhooks* 192.168.1.x:3001
-    reverse_proxy /api/health* 192.168.1.x:3001
-
-    # Everything else (including /api/auth) goes to Next.js
     reverse_proxy localhost:3000
 }

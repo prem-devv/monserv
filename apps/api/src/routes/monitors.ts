@@ -1,22 +1,31 @@
 import { FastifyInstance } from 'fastify';
 import { jsonDb } from '../db/jsonDb.js';
 import { z } from 'zod';
-import { scheduleMonitorWithInterval, cancelMonitorSchedule } from '../services/scheduler.js';
+import { scheduleMonitorWithInterval, cancelMonitorSchedule, executeSingleCheck } from '../services/scheduler.js';
 
 const createMonitorSchema = z.object({
-  name: z.string().min(1),
+  name: z.string().min(1).max(100).trim(),
   type: z.enum(['http', 'tcp', 'icmp']),
-  url: z.string().min(1),
-  port: z.number().optional(),
-  interval: z.number().min(5).max(3600).default(60),
-  timeout: z.number().min(5).max(30).default(10),
-  keyword: z.string().optional(),
-  expectedStatus: z.number().min(100).max(599).optional(),
-  webhookUrl: z.string().url().optional().or(z.literal('')),
+  url: z.string().min(1).max(2048).trim(),
+  port: z.number().int().min(1).max(65535).optional().nullable(),
+  interval: z.number().int().min(1).max(3600).default(60),
+  timeout: z.number().int().min(1).max(30).default(10),
+  keyword: z.string().max(255).optional().nullable(),
+  expectedStatus: z.number().int().min(100).max(599).optional().nullable(),
+  webhookUrl: z.string().max(2048).url().optional().or(z.literal('')).nullable(),
   isPublic: z.boolean().default(false),
 });
 
 const updateMonitorSchema = createMonitorSchema.partial();
+
+const testConnectionSchema = z.object({
+  type: z.enum(['http', 'tcp', 'icmp']),
+  url: z.string().min(1).max(2048).trim(),
+  port: z.number().int().min(1).max(65535).optional().nullable(),
+  timeout: z.number().int().min(1).max(30).default(10),
+  keyword: z.string().max(255).optional().nullable(),
+  expectedStatus: z.number().int().min(100).max(599).optional().nullable(),
+});
 
 async function getUptimePercentage(monitorId: number): Promise<number> {
   const heartbeats = jsonDb.heartbeats.findMany(monitorId, 1440);
@@ -122,7 +131,7 @@ export async function monitorRoutes(fastify: FastifyInstance) {
     if (data.interval !== undefined || data.url !== undefined || data.type !== undefined || data.port !== undefined) {
       try {
         await cancelMonitorSchedule(parseInt(id));
-        await scheduleMonitorWithInterval(parseInt(id), data.interval || existing.interval);
+        await scheduleMonitorWithInterval(parseInt(id), data.interval || existing.interval, false);
       } catch (error) {
         console.error('Failed to reschedule monitor:', error);
       }
@@ -155,5 +164,45 @@ export async function monitorRoutes(fastify: FastifyInstance) {
 
     const heartbeats = jsonDb.heartbeats.findMany(parseInt(id), parseInt(limit) || 1440);
     return reply.send(heartbeats);
+  });
+
+  fastify.post('/monitors/:id/test', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const monitor = jsonDb.monitors.findFirst(parseInt(id));
+
+    if (!monitor) {
+      return reply.code(404).send({ error: 'Monitor not found' });
+    }
+
+    try {
+      const result = await executeSingleCheck(
+        monitor.type,
+        monitor.url,
+        monitor.port,
+        monitor.timeout,
+        monitor.keyword,
+        monitor.expectedStatus
+      );
+      return reply.send(result);
+    } catch (error: any) {
+      return reply.code(500).send({ error: error.message || 'Failed to run test' });
+    }
+  });
+
+  fastify.post('/monitors/test-connection', async (request, reply) => {
+    const data = testConnectionSchema.parse(request.body);
+    try {
+      const result = await executeSingleCheck(
+        data.type,
+        data.url,
+        data.port || null,
+        data.timeout,
+        data.keyword || null,
+        data.expectedStatus || null
+      );
+      return reply.send(result);
+    } catch (error: any) {
+      return reply.code(500).send({ error: error.message || 'Failed to run connection test' });
+    }
   });
 }

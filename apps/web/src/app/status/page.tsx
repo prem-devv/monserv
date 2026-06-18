@@ -47,23 +47,23 @@ export default function PublicStatusPage() {
 
   const statusConfig = {
     operational: {
-      color: 'text-neon-green',
-      bgColor: 'bg-neon-green',
-      borderColor: 'border-neon-green/30',
+      color: 'text-status-green',
+      bgColor: 'bg-status-green shadow-[0_0_12px_#10B981]',
+      borderColor: 'border-status-green/20',
       icon: CheckCircle,
       label: 'All Systems Operational',
     },
     degraded: {
-      color: 'text-neon-yellow',
-      bgColor: 'bg-neon-yellow',
-      borderColor: 'border-neon-yellow/30',
+      color: 'text-status-yellow',
+      bgColor: 'bg-status-yellow shadow-[0_0_12px_#F59E0B]',
+      borderColor: 'border-status-yellow/20',
       icon: AlertTriangle,
       label: 'Some Systems Degraded',
     },
     down: {
-      color: 'text-neon-red',
-      bgColor: 'bg-neon-red',
-      borderColor: 'border-neon-red/30',
+      color: 'text-status-red',
+      bgColor: 'bg-status-red shadow-[0_0_12px_#EF4444]',
+      borderColor: 'border-status-red/20',
       icon: XCircle,
       label: 'Systems Down',
     },
@@ -78,12 +78,12 @@ export default function PublicStatusPage() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
-              <Globe className="w-6 h-6 text-neon-cyan" />
-              <span className="text-lg font-bold text-mono">PULSE</span>
+              <Globe className="w-5 h-5 text-brand" />
+              <span className="text-lg font-extrabold tracking-tight text-gradient">MONSERV</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className={`w-2 h-2 rounded-full ${config.bgColor} animate-k-monitor`} />
-              <span className={`text-sm font-medium ${config.color}`}>{config.label}</span>
+              <span className={`w-2 h-2 rounded-full ${config.bgColor}`} />
+              <span className={`text-sm font-semibold ${config.color}`}>{config.label}</span>
             </div>
           </div>
         </div>
@@ -125,12 +125,12 @@ export default function PublicStatusPage() {
                 </div>
                 <div className="flex items-center justify-center">
                   {monitor.status === 'up' ? (
-                    <div className="flex items-center gap-2 text-neon-green">
+                    <div className="flex items-center gap-2 text-status-green">
                       <span className="status-dot up" />
                       <span className="text-sm">Operational</span>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-2 text-neon-red">
+                    <div className="flex items-center gap-2 text-status-red">
                       <span className="status-dot down" />
                       <span className="text-sm">Down</span>
                     </div>
@@ -148,7 +148,7 @@ export default function PublicStatusPage() {
         </div>
 
         <footer className="mt-12 text-center text-text-muted text-sm">
-          <p>Powered by <span className="text-neon-cyan">K-Monitor</span></p>
+          <p>Powered by <span className="text-neon-cyan">Monserv</span></p>
         </footer>
       </main>
     </div>

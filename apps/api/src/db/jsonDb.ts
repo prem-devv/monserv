@@ -30,10 +30,19 @@ export interface Heartbeat {
   createdAt: number;
 }
 
+export interface Settings {
+  smtpHost: string;
+  smtpPort: number;
+  smtpUser: string;
+  smtpPass: string;
+  smtpFrom: string;
+  notificationEmail: string;
+}
+
 interface Database {
   monitors: Monitor[];
   heartbeats: Heartbeat[];
-  settings: Record<string, unknown>[];
+  settings: Settings;
   nextMonitorId: number;
   nextHeartbeatId: number;
 }
@@ -44,7 +53,14 @@ function getDefaultDb(): Database {
   return {
     monitors: [],
     heartbeats: [],
-    settings: [],
+    settings: {
+      smtpHost: '',
+      smtpPort: 587,
+      smtpUser: '',
+      smtpPass: '',
+      smtpFrom: '',
+      notificationEmail: '',
+    },
     nextMonitorId: 1,
     nextHeartbeatId: 1,
   };
@@ -54,7 +70,15 @@ function loadDb(): Database {
   try {
     if (fs.existsSync(dbPath)) {
       const data = fs.readFileSync(dbPath, 'utf8');
-      return JSON.parse(data);
+      const parsed = JSON.parse(data);
+      return {
+        ...getDefaultDb(),
+        ...parsed,
+        settings: {
+          ...getDefaultDb().settings,
+          ...(parsed.settings || {}),
+        }
+      };
     }
   } catch (err) {
     console.error('Failed to load database, starting fresh:', err);
@@ -127,6 +151,14 @@ export const jsonDb = {
       }
       saveDb(db);
       return heartbeat;
+    },
+  },
+  settings: {
+    get: () => ({ ...db.settings }),
+    update: (data: Partial<Settings>) => {
+      db.settings = { ...db.settings, ...data };
+      saveDb(db);
+      return db.settings;
     },
   },
 };

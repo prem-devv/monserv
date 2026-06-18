@@ -4,10 +4,29 @@ import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import { monitorRoutes } from './routes/monitors.js';
 import { statusRoutes } from './routes/status.js';
+import { settingsRoutes } from './routes/settings.js';
 import { scheduleAllMonitors } from './services/scheduler.js';
+
+import { ZodError } from 'zod';
 
 const fastify = Fastify({
   logger: true,
+});
+
+fastify.setErrorHandler((error, request, reply) => {
+  if (error instanceof ZodError) {
+    return reply.status(400).send({
+      error: 'Bad Request',
+      message: 'Validation failed',
+      details: error.errors,
+    });
+  }
+  
+  fastify.log.error(error);
+  return reply.status(error.statusCode || 500).send({
+    error: error.name || 'InternalServerError',
+    message: error.message || 'An unexpected error occurred',
+  });
 });
 
 async function start() {
@@ -19,7 +38,7 @@ async function start() {
     await fastify.register(swagger, {
       openapi: {
         info: {
-          title: 'K-Monitor API',
+          title: 'Monserv API',
           version: '1.0.0',
         },
       },
@@ -35,6 +54,7 @@ async function start() {
 
     await fastify.register(monitorRoutes, { prefix: '/api' });
     await fastify.register(statusRoutes, { prefix: '/api' });
+    await fastify.register(settingsRoutes, { prefix: '/api' });
 
     fastify.get('/api/health', async () => {
       return { status: 'ok', timestamp: Date.now() };
@@ -59,3 +79,4 @@ async function start() {
 }
 
 start();
+// Reload trigger to fix race condition EADDRINUSE

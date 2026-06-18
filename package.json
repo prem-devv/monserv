@@ -1,5 +1,5 @@
 {
-  "name": "k-monitor",
+  "name": "monserv",
   "version": "1.0.0",
   "private": true,
   "workspaces": [
@@ -16,6 +16,7 @@
     "start": "concurrently \"npm run start:api\" \"npm run start:web\"",
     "start:api": "npm --prefix apps/api run start",
     "start:web": "npm --prefix apps/web run start",
+    "test": "npm run test --workspaces --if-present",
     "db:generate": "npm --prefix apps/api run db:generate",
     "db:push": "npm --prefix apps/api run db:push",
     "db:studio": "npm --prefix apps/api run db:studio"

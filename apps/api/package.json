@@ -1,12 +1,13 @@
 {
-  "name": "@k-monitor/api",
+  "name": "@monserv/api",
   "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "test": "DB_PATH=test-db.json node --import tsx --test src/**/*.test.ts"
   },
   "dependencies": {
     "@fastify/cors": "^9.0.1",
