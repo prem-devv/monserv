@@ -7,7 +7,7 @@ const lastStatus = new Map();
 const failureCount = new Map();
 // Number of consecutive failures required before marking a monitor as DOWN.
 // A single success immediately resets the counter and marks it UP.
-const FAILURE_THRESHOLD = 3;
+const FAILURE_THRESHOLD = 1;
 async function sendWebhookNotification(webhookUrl, monitor, status, message) {
     try {
         const emoji = status === 'up' ? '✅' : '🔴';
@@ -62,23 +62,41 @@ export async function executeSingleCheck(type, url, port, timeout, keyword, expe
     const start = Date.now();
     try {
         if (type === 'http') {
-            const response = await axios.get(url, {
-                timeout: timeout * 1000,
-                validateStatus: () => true,
-                httpsAgent: globalHttpsAgent,
-            });
-            latency = Date.now() - start;
-            if (expectedStatus && response.status !== expectedStatus) {
-                up = false;
-                message = `Expected ${expectedStatus}, got ${response.status}`;
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeout * 1000);
+            try {
+                const response = await axios.get(url, {
+                    timeout: timeout * 1000,
+                    validateStatus: () => true,
+                    httpsAgent: globalHttpsAgent,
+                    headers: {
+                        'User-Agent': 'Monserv/1.0 (Monitoring Check)',
+                        'Cache-Control': 'no-cache',
+                        'Connection': 'keep-alive'
+                    },
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+                latency = Date.now() - start;
+                if (expectedStatus) {
+                    up = response.status === expectedStatus;
+                    message = `HTTP ${response.status}${!up ? ` (Expected ${expectedStatus})` : ''}`;
+                }
+                else {
+                    up = response.status >= 200 && response.status < 400;
+                    message = `HTTP ${response.status}`;
+                }
+                if (up && keyword) {
+                    const bodyString = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
+                    if (!bodyString.includes(keyword)) {
+                        up = false;
+                        message = `Keyword "${keyword}" not found`;
+                    }
+                }
             }
-            else if (keyword && !String(response.data).includes(keyword)) {
-                up = false;
-                message = `Keyword "${keyword}" not found`;
-            }
-            else {
-                up = true;
-                message = `HTTP ${response.status}`;
+            catch (err) {
+                clearTimeout(timeoutId);
+                throw err;
             }
         }
         else if (type === 'tcp') {
@@ -277,13 +295,5 @@ export function cancelMonitorSchedule(monitorId) {
         console.log(`Cancelled schedule for monitor ${monitorId}`);
     }
 }
-export async function getUptimePercentage(monitorId) {
-    const heartbeats = jsonDb.heartbeats.findMany(monitorId, 1440);
-    const cutoffTime = Date.now() - (24 * 60 * 60 * 1000);
-    const recentHeartbeats = heartbeats.filter(h => h.createdAt > cutoffTime);
-    if (recentHeartbeats.length === 0)
-        return 100;
-    const upCount = recentHeartbeats.filter(h => h.status === 'up').length;
-    return (upCount / recentHeartbeats.length) * 100;
-}
+export { getUptimePercentage } from '../utils/uptime.js';
 export { scheduleMonitorWithInterval as scheduleMonitor };

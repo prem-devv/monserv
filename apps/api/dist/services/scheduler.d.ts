@@ -11,5 +11,5 @@ export declare function scheduleAllMonitors(): Promise<void>;
  */
 export declare function scheduleMonitorWithInterval(monitorId: number, intervalSeconds: number, runImmediate?: boolean): Promise<void>;
 export declare function cancelMonitorSchedule(monitorId: number): void;
-export declare function getUptimePercentage(monitorId: number): Promise<number>;
+export { getUptimePercentage } from '../utils/uptime.js';
 export { scheduleMonitorWithInterval as scheduleMonitor };

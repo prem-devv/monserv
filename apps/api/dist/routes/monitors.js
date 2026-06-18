@@ -2,6 +2,7 @@ import { jsonDb } from '../db/jsonDb.js';
 import { z } from 'zod';
 import { scheduleMonitorWithInterval, cancelMonitorSchedule, executeSingleCheck } from '../services/scheduler.js';
 import axios from 'axios';
+import { getUptimePercentage } from '../utils/uptime.js';
 const createMonitorSchema = z.object({
     name: z.string().min(1).max(100).trim(),
     type: z.enum(['http', 'tcp', 'icmp']),
@@ -24,15 +25,6 @@ const testConnectionSchema = z.object({
     expectedStatus: z.number().int().min(100).max(599).optional().nullable(),
     webhookUrl: z.string().max(2048).url().optional().or(z.literal('')).nullable(),
 });
-async function getUptimePercentage(monitorId) {
-    const heartbeats = jsonDb.heartbeats.findMany(monitorId, 1440);
-    const cutoffTime = Date.now() - (24 * 60 * 60 * 1000);
-    const recentHeartbeats = heartbeats.filter(h => h.createdAt > cutoffTime);
-    if (recentHeartbeats.length === 0)
-        return 100;
-    const upCount = recentHeartbeats.filter(h => h.status === 'up').length;
-    return (upCount / recentHeartbeats.length) * 100;
-}
 export async function monitorRoutes(fastify) {
     fastify.get('/monitors', async (request, reply) => {
         const monitors = jsonDb.monitors.findMany().sort((a, b) => b.createdAt - a.createdAt);

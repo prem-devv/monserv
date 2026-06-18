@@ -1,12 +1,13 @@
 import { jsonDb } from '../db/jsonDb.js';
 import axios from 'axios';
+import { getUptimePercentage } from '../utils/uptime.js';
 export async function statusRoutes(fastify) {
     fastify.get('/status', async (request, reply) => {
         const monitors = jsonDb.monitors.findMany().filter(m => m.isPublic);
         const publicMonitors = await Promise.all(monitors.map(async (monitor) => {
             const heartbeats = jsonDb.heartbeats.findMany(monitor.id, 1);
             const lastHeartbeat = heartbeats.length > 0 ? heartbeats[0] : null;
-            const uptime = calculateUptime(monitor.id);
+            const uptime = await getUptimePercentage(monitor.id);
             return {
                 id: monitor.id,
                 name: monitor.name,
@@ -49,13 +50,4 @@ export async function statusRoutes(fastify) {
             });
         }
     });
-}
-function calculateUptime(monitorId) {
-    const heartbeats = jsonDb.heartbeats.findMany(monitorId, 1440);
-    const cutoffTime = Date.now() - (24 * 60 * 60 * 1000);
-    const recentHeartbeats = heartbeats.filter(h => h.createdAt > cutoffTime);
-    if (recentHeartbeats.length === 0)
-        return 100;
-    const upCount = recentHeartbeats.filter(h => h.status === 'up').length;
-    return (upCount / recentHeartbeats.length) * 100;
 }
