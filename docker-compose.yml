@@ -35,7 +35,7 @@ services:
     environment:
       - NEXT_PUBLIC_API_URL=/api
       - INTERNAL_API_URL=http://api:3001
-      - NEXTAUTH_URL=${NEXTAUTH_URL:-${PROTOCOL:-http}://${SERVER_IP:-localhost}${PORT_SUFFIX:-:3000}}
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3000}
       - NEXTAUTH_URL_INTERNAL=http://localhost:3000
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-monserv-secret-change-me}
       - NEXTAUTH_TRUST_HOST=true
