@@ -6,41 +6,55 @@ module.exports = {
         background: {
           primary: 'var(--background-primary)',
           secondary: 'var(--background-secondary)',
-          tertiary: 'var(--background-tertiary)'
+          tertiary: 'var(--background-tertiary)',
         },
         surface: {
           DEFAULT: 'var(--surface)',
-          border: 'var(--surface-border)'
+          border: 'var(--surface-border)',
         },
         text: {
           primary: 'var(--text-primary)',
           secondary: 'var(--text-secondary)',
-          muted: 'var(--text-muted)'
+          muted: 'var(--text-muted)',
         },
         brand: {
           DEFAULT: 'var(--brand)',
-          hover: 'var(--brand-hover)'
+          hover: 'var(--brand-hover)',
+          soft: 'var(--brand-soft)',
         },
         status: {
           green: 'var(--status-green)',
           red: 'var(--status-red)',
           yellow: 'var(--status-yellow)',
-          cyan: 'var(--status-cyan)'
+          cyan: 'var(--status-cyan)',
         },
         gradient: {
           start: 'var(--brand)',
           mid: 'var(--brand-hover)',
-          end: 'var(--status-cyan)'
-        }
+          end: 'var(--status-cyan)',
+        },
       },
-      fontFamily: { sans: ['Outfit', 'Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+      fontFamily: {
+        sans: ['Outfit', 'Inter', 'sans-serif'],
+        mono: ['JetBrains Mono', 'monospace'],
+      },
+      backdropBlur: {
+        xs: '2px',
+      },
       boxShadow: {
-        'card': '0 4px 20px rgba(0, 0, 0, 0.02)',
-        'card-hover': '0 8px 30px rgba(124, 58, 237, 0.04), 0 10px 30px rgba(0, 0, 0, 0.04)',
-        'glow-green': '0 0 15px rgba(16, 185, 129, 0.1)',
-        'glow-red': '0 0 15px rgba(239, 68, 68, 0.1)',
-        'glow-cyan': '0 0 15px rgba(14, 165, 233, 0.1)',
-        'glow-purple': '0 0 15px rgba(124, 58, 237, 0.1)',
+        slab: '0 24px 60px -20px rgba(0,0,0,0.6), 0 8px 24px -12px rgba(0,0,0,0.5)',
+        'glow-cyan': '0 0 24px -4px rgba(56, 189, 248, 0.45)',
+        'glow-green': '0 0 22px -4px rgba(52, 211, 153, 0.4)',
+        'glow-red': '0 0 22px -4px rgba(251, 94, 126, 0.4)',
+      },
+      keyframes: {
+        floaty: {
+          '0%, 100%': { transform: 'translateY(0px)' },
+          '50%': { transform: 'translateY(-4px)' },
+        },
+      },
+      animation: {
+        floaty: 'floaty 6s ease-in-out infinite',
       },
     },
   },

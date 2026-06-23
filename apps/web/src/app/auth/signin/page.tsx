@@ -54,7 +54,7 @@ export default function SignIn() {
         <div className="flex justify-center text-brand">
           <Activity className="w-12 h-12 animate-pulse" />
         </div>
-        <h2 className="mt-6 text-center text-3xl font-extrabold tracking-tight text-gray-900">
+        <h2 className="mt-6 text-center text-3xl font-extrabold tracking-tight text-gradient">
           Sign in to Monserv
         </h2>
         <p className="mt-2 text-center text-xs text-text-secondary uppercase tracking-widest font-semibold">
