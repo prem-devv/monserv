@@ -236,7 +236,21 @@ body {
     background-size: 16px;
     padding-right: 42px;
   }
-  .select-field option { background: #0d1528; color: var(--text-primary); }
+  .select-field option {
+    background: #0d1528;
+    color: var(--text-primary);
+    padding: 10px 16px;
+    border: none;
+    font-family: 'Outfit', sans-serif;
+  }
+  .select-field optgroup {
+    background: #0d1528;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 10px;
+  }
 
   .label {
     @apply block text-xs font-semibold mb-1.5 tracking-wide uppercase;

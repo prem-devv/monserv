@@ -749,7 +749,24 @@ export default function Dashboard() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="label">Protocol</label>
-                  <select value={formData.type} onChange={e => setFormData({ ...formData, type: e.target.value as any })} className="select-field">
+                  <select
+                    value={formData.type}
+                    onChange={e => {
+                      const t = e.target.value;
+                      const examples: Record<string, string> = {
+                        http: 'https://',
+                        tcp: 'google.com',
+                        icmp: '8.8.8.8',
+                      };
+                      setFormData({
+                        ...formData,
+                        type: t as any,
+                        url: examples[t] || formData.url,
+                        port: t === 'tcp' ? 443 : (t === 'icmp' ? 0 : 80),
+                      });
+                    }}
+                    className="select-field"
+                  >
                     <option value="http">HTTP/HTTPS</option>
                     <option value="tcp">TCP Port</option>
                     <option value="icmp">ICMP Ping</option>
