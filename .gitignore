@@ -27,6 +27,13 @@ logs/
 .DS_Store
 Thumbs.db
 
+# Documents & reports
+*.docx
+*.pdf
+
+# TypeScript build cache
+*.tsbuildinfo
+
 # Debug / scratch scripts
 test-*.js
 test-*.ts
