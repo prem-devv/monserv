@@ -10,8 +10,7 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         PORT: 3001,
-        REDIS_HOST: 'localhost',
-        REDIS_PORT: 6379,
+        DB_PATH: 'db.json',
       },
       error_file: 'logs/api-error.log',
       out_file: 'logs/api-out.log',

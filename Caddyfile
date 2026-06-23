@@ -1,5 +1,21 @@
-# Secure production configuration routing all traffic through Next.js
-# to enforce session-based middleware authentication.
+# Monserv — secure reverse-proxy configuration.
+# All traffic is routed through Next.js for session-based middleware auth.
 prem.namma.cloud {
-    reverse_proxy localhost:3000
+    reverse_proxy localhost:3000 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Forwarded-Host {host}
+    }
+
+    # Security headers
+    header {
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+
+    # Optional: enable if using Caddy for TLS termination
+    # tls your-email@example.com
 }

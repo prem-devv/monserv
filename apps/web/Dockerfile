@@ -3,7 +3,6 @@ WORKDIR /app
 
 # Copy root workspace configs
 COPY package.json package-lock.json ./
-# Copy workspace apps
 COPY apps/web ./apps/web
 
 # Install dependencies
@@ -19,9 +18,13 @@ RUN npm run build
 
 FROM node:20-alpine
 WORKDIR /app
+
+# Install wget for healthchecks
+RUN apk add --no-cache wget
+
 COPY --from=builder /app/apps/web/package.json ./apps/web/package.json
 COPY --from=builder /app/apps/web/.next ./apps/web/.next
-RUN test -d /app/apps/web/public && COPY --from=builder /app/apps/web/public ./apps/web/public || true
+COPY --from=builder /app/apps/web/public ./apps/web/public
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/apps/web/node_modules ./apps/web/node_modules
 

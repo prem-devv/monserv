@@ -5,20 +5,24 @@ import { getToken } from 'next-auth/jwt';
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Allow next-auth calls, public status data, and health checks
+  // Public paths — no authentication required
   if (
     pathname.startsWith('/api/auth') ||
     pathname.startsWith('/api/status') ||
-    pathname === '/api/health'
+    pathname === '/api/health' ||
+    pathname.startsWith('/auth/signin') ||
+    pathname === '/status'
   ) {
     return NextResponse.next();
   }
 
-  // Restrict all other API access to authenticated users
+  // All other /api/* paths require a valid session
   if (pathname.startsWith('/api/')) {
     const token = await getToken({
       req: request,
-      secret: process.env.NEXTAUTH_SECRET || 'default-secret-change-in-production',
+      secret:
+        process.env.NEXTAUTH_SECRET ||
+        'default-secret-change-in-production',
     });
 
     if (!token) {
@@ -27,7 +31,7 @@ export async function middleware(request: NextRequest) {
         {
           status: 401,
           headers: { 'content-type': 'application/json' },
-        }
+        },
       );
     }
   }
@@ -36,5 +40,14 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/api/:path*'],
+  matcher: [
+    /*
+     * Match all request paths except:
+     *  - _next/static (static files)
+     *  - _next/image (image optimization files)
+     *  - favicon.ico
+     *  - public assets
+     */
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
 };

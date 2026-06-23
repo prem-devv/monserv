@@ -12,7 +12,13 @@ RUN npx tsc
 FROM node:20-alpine
 WORKDIR /app
 
+# Runtime deps: iputils for ICMP ping, wget for healthchecks
 RUN apk add --no-cache iputils wget && mkdir -p /app/data
+
+# Grant raw socket capability to the ping binary so it works even
+# when the container is run with a non-root USER (cap_net_raw still
+# requires the container to be started with --cap-add=NET_RAW).
+RUN setcap cap_net_raw+ep /bin/busybox 2>/dev/null || true
 
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/apps/api/node_modules ./apps/api/node_modules
